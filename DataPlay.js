@@ -41,7 +41,12 @@ var DataPlay = {
 	//	These functions return an array or scalar		
 	round:		function( ar, decimals ){
 					//	two modes so you same function can return array or scalar
-					mode = (ar instanceof Array) ? "array" : "scalar";
+					try{
+						mode = (ar.length > 1) ? "array" : "scalar";
+						}
+					catch(err){
+						mode = "scalar";
+					}
 					var prerounded = ar;
 					var rounded = [];
 					if( mode == "scalar" ){ var prerounded=[ prerounded ] }
@@ -277,12 +282,72 @@ if( rs.aggregateByGroup( ['country'], DataPlay.mean , 'height' ).where('country'
 
 rs.aggregateByGroup( ['country'], DataPlay.round , 'height' )
 
-
-
 //	clean out the unit objects
 delete skyscrapers; delete rs;
 
 console.log( "DataPlay.js unit tests complete" )
+
+
+//	Unit Tests and Use Cases
+
+survey = [	{ "id":"user1","time":1, "question":"toi.1", "answer": 2 } ,
+			{ "id":"user1","time":1, "question":"toi.2", "answer": 3 },
+			{ "id":"user1","time":2, "question":"toi.1", "answer": 2 },
+			{ "id":"user1","time":2, "question":"toi.2", "answer": 4 },
+			{ "id":"user1","time":2, "question":"se.1", "answer": 4 },
+			{ "id":"user2","time":1, "question":"toi.1", "answer": 4 },
+			{ "id":"user2","time":1, "question":"toi.2", "answer": 5 },
+			{ "id":"user2","time":2, "question":"toi.1", "answer": 5 },
+			{ "id":"user2","time":2, "question":"toi.2", "answer": 6 },
+			{ "id":"user2","time":4, "question":"se.1", "answer": 5 },
+			]
+
+//	turn the survey results into a DataSet
+s	= new DataSet( survey )
+
+//	who were the users?
+s.get('id').unique().data
+if( ! (s.get('id') instanceof dpVector) ){ throw "get failed!"; }
+if( s.get('id').unique().data.length !== 2 ){ throw "unique failed!"; }
+
+//	how many users were there?
+s.get('id').unique().data.length
+if( s.get('id').unique().data.length !== 2 ){ throw "get unique failed" }
+
+//	get the theories of intelligence questions with list of question names
+ut = s.where('question','in',['toi.1','toi.2']).data
+if( ut.length !== 8 ){ throw "where failed!" }
+//	get the theories of intelligence questions by string match (contain "toi.")
+ut = s.where('question','contains','toi.').data
+if( ut.length !== 8 ){ throw "where is failed!" }
+
+//	get the theories of intelligence questions from time 1
+ut = s.where('question','contains','toi.').where('time','in',1)
+if( ut.data.length !== 4){
+	throw "chained where failed!";
+}
+
+//	get the mean answer for the time 1 theories of intelligence questions
+ut = s.where('question','contains','toi.').where('time','in',1).get('answer').mean()
+if( ut !== 3.5 ){ throw "mean failed" }
+if( s.where('question','does not contain','toi.').data.length !== 2 ){ 
+	throw "does not contain failed!" 
+}
+
+//	calculate each user's theories of intelligence at each different time
+//	you could do this all on one line, but I break it up for readability
+toiQs = s.where('question','contains','toi.')
+meanToi = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
+if( ! ( meanToi instanceof DataSet ) ){ throw "Aggregate by failed!" }
+
+//	now round each individual's mean for easier interpretation
+a = meanToi.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
+
+
+
+
+
+
 
 
 
