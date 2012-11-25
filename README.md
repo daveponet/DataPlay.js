@@ -5,8 +5,8 @@
 	Dave Paunesku
 	Nov, 2012
 
-	DataPlay.js makes it easy to subset and aggregate data. It contains: 
-	The DataSet class and modifications to the String and Array prototypes.
+	DataPlay.js makes it easy to subset and aggregate data.
 	See the bottom of DataPlay.js for use cases and unit tests.
+	It depends on jQuery.
 
 	

@@ -6,18 +6,19 @@
 //
 //	Functions for sub-selecting and aggregating data with JavaScript.
 //	There are three classes:
-//		DataPlay: a singleton used by the dpVector and DataSet.
-//		dpVector: a wrapper for 1-D arrays.
-//		DataSet: a wrapper for object arrays.
+//		DataPlay	a singleton with functions used by dpVector and DataSet.
+//		dpVector 	a wrapper for 1-D arrays.
+//		DataSet 	a wrapper for object arrays.
 //	
 //	Depends jQuery
+//	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 //
 //////////////////////////////////////////////////////////////////////////////////////	
 
 //	Define DataPlay singleton and some basic functions
 var DataPlay = {
-	//	These functions
-	//	return a scalar
+
+	//	These functions return a scalar
 	hash:		function( str ){
 					var hash = 0, i, char;
 					if (str.length == 0) return hash;
@@ -37,27 +38,7 @@ var DataPlay = {
 					return( Math.round(sum/ar.length * 100)/100 );
 				},
 
-	//	These functions
-	//	return a dpVector			
-	unique:		function( ar ){
-					uniqueAr = ar.sort().filter(
-						function(el,i,a){
-							if(i==a.indexOf(el)) return 1; return 0;
-						});
-					uniqueDpVec = new dpVector( uniqueAr)
-					return( uniqueDpVec );
-				},
-
-	intersect:	function( ar1, ar2 ){
-					inBoth = ar1.filter(function(n) {
-							if(ar2.indexOf(n) == -1)
-								return false;
-							return true;
-						});
-					inBoth = new dpVector( inBoth );
-					return( inBoth.unique() );
-				},
-				
+	//	These functions return an array or scalar		
 	round:		function( ar, decimals ){
 					//	two modes so you same function can return array or scalar
 					mode = (ar instanceof Array) ? "array" : "scalar";
@@ -72,9 +53,25 @@ var DataPlay = {
 					if( mode == "scalar" ){ rounded = rounded.shift() }
 					return( rounded );
 				},
+				
+	//	These functions return an array	
+	unique:		function( ar ){
+					return( ar.sort().filter(
+						function(el,i,a){
+							if(i==a.indexOf(el)) return 1; return 0;
+						}));
+				},
 
-	//	These functions
-	//	return a DataSet
+	intersect:	function( ar1, ar2 ){
+					inBoth = ar1.filter(function(n) {
+							if(ar2.indexOf(n) == -1)
+								return false;
+							return true;
+						});
+					return( DataPlay.unique(inBoth) );
+				},
+
+	//	These functions return a DataSet
 	distribution:function( ar ){
 					ar = ar.sort();
 					var distribution = [];
@@ -94,7 +91,8 @@ var DataPlay = {
 }
 
 
-//	Define DataSet and its prototype
+//	DATASET DEFINITION
+//	DATASET DEFINITION
 function DataSet( data ){
 	this.data = data;
 }
@@ -188,43 +186,39 @@ DataSet.prototype.aggregateByGroup = function( idAttrs, func, value ){
 		for( var i=0; i < idAttrs.length; i++){		
 			newRow[ idAttrs[i] ] = targetRows.data[0][ idAttrs[i] ];
 		}
-		//	calculate the mean of the target rows
-		if( func == "mean" ){
-			newRow[value] = targetRows.get(value).mean();
-		}
-		else{
-			throw "Invalid aggregation function '" + func + "' passed in.";
-		}
+		newRow[value] = func( targetRows.get(value).data );
 		casted.push( newRow );
 	}
 	casted = new DataSet( casted );
 	return( casted );
 }
 
-//	a DataPlay.js 1-D array, includes the methods:
+//	dpVector DEFINITION
+//	dpVector DEFINITION
+
 //	mean, unique, intersect, round, distribution
 function dpVector( data ){
 	this.data = data;
 }
 
-//	returns vector with unique values
-dpVector.prototype.unique = function ( ) {
-	return( DataPlay.unique( this.data ) )
-}
-
-//	returns means
+//	returns mean
 dpVector.prototype.mean = function ( ) {
 	return( DataPlay.mean( this.data ) )
 }
 
+//	returns dpVector with unique values
+dpVector.prototype.unique = function ( ) {
+	return( new dpVector( DataPlay.unique( this.data ) ) )
+}
+
 //	returns the unique intersection of the two arrays
 dpVector.prototype.intersect = function( ar ){
-	return( DataPlay.intersect( this, ar ) )
+	return( new dpVector( DataPlay.intersect( this.data ) ) )
 }
 
 //	rounds the object to the specified decimals, default=0
 dpVector.prototype.round = function( decimals ){
-	return( DataPlay.round( this, decimals ) )
+	return( new dpVector( DataPlay.round( this.data ) ) )
 }
 
 //	returns DataSet with each unique value and frequency (count)
@@ -236,15 +230,15 @@ dpVector.prototype.distribution = function( ){
 
 
 
-/*
-*	UNIT TESTS & USE CASES
-*/
+//
+//	UNIT TESTS & USE CASES
+//
 skyscrapers = [{ "name":"Empire State Building", "country":"USA", "height": 1454 } ,
 				{ "name":"Willis Tower", "country":"USA", "height": 1727 },
 				{ "name":"Burj Khalifa", "country":"UEA", "height": 2717 }]
 
 //	to load in data directly from a CSV
-//	you can use jquery.csv-0.71.js
+//	you can use jquery-csv
 //	see http://code.google.com/p/jquery-csv/
 /*	
 *	jQuery.ajax( CSVpath, {success:function(data){
@@ -272,14 +266,18 @@ rs.get('height').mean()
 if( rs.get('height').mean() != 1966 ){ throw "Mean failed" }
 
 //	what is the average height by country?
-rs.aggregateByGroup( ['country'], 'mean', 'height' )	// result set
+rs.aggregateByGroup( ['country'], DataPlay.mean , 'height' )	// result set
 //	what is the average height by country and building name?
-rs.aggregateByGroup( ['country','name'], 'mean', 'height' )	// result set
+rs.aggregateByGroup( ['country','name'], DataPlay.mean , 'height' )	// result set
 
 //	test castedMeans and demo chaining
-if( rs.aggregateByGroup( ['country'], 'mean', 'height' ).where('country','in','USA').get('height').data != 1590.5 ){
+if( rs.aggregateByGroup( ['country'], DataPlay.mean , 'height' ).where('country','in','USA').get('height').data != 1590.5 ){
 	throw "casted mean failed!"
 }
+
+rs.aggregateByGroup( ['country'], DataPlay.round , 'height' )
+
+
 
 //	clean out the unit objects
 delete skyscrapers; delete rs;
