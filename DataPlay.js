@@ -5,12 +5,96 @@
 //	Dave Paunesku, Nov 2012
 //
 //	Functions for sub-selecting and aggregating data with JavaScript.
-//	Note: DataPlay.js modifies the Array and String prototypes.
+//	There are three classes:
+//		DataPlay: a singleton used by the dpVector and DataSet.
+//		dpVector: a wrapper for 1-D arrays.
+//		DataSet: a wrapper for object arrays.
+//	
 //	Depends jQuery
 //
 //////////////////////////////////////////////////////////////////////////////////////	
 
-//	Define DataSet and Prototype
+//	Define DataPlay singleton and some basic functions
+var DataPlay = {
+	//	These functions
+	//	return a scalar
+	hash:		function( str ){
+					var hash = 0, i, char;
+					if (str.length == 0) return hash;
+					for (i = 0; i < str.length; i++) {
+						char = str.charCodeAt(i);
+						hash = ((hash<<5)-hash)+char;
+						hash = hash & hash; // Convert to 32bit integer
+					}
+					return hash;
+				},
+
+	mean:		function( ar ){
+					var i = 0, sum = 0;
+					for(i = 0; i < ar.length; i++){
+						sum += Number(ar[i]);
+					}
+					return( Math.round(sum/ar.length * 100)/100 );
+				},
+
+	//	These functions
+	//	return a dpVector			
+	unique:		function( ar ){
+					uniqueAr = ar.sort().filter(
+						function(el,i,a){
+							if(i==a.indexOf(el)) return 1; return 0;
+						});
+					uniqueDpVec = new dpVector( uniqueAr)
+					return( uniqueDpVec );
+				},
+
+	intersect:	function( ar1, ar2 ){
+					inBoth = ar1.filter(function(n) {
+							if(ar2.indexOf(n) == -1)
+								return false;
+							return true;
+						});
+					inBoth = new dpVector( inBoth );
+					return( inBoth.unique() );
+				},
+				
+	round:		function( ar, decimals ){
+					//	two modes so you same function can return array or scalar
+					mode = (ar instanceof Array) ? "array" : "scalar";
+					var prerounded = ar;
+					var rounded = [];
+					if( mode == "scalar" ){ var prerounded=[ prerounded ] }
+					if( typeof decimals == "undefined" ){ decimals = 0 }
+					for( i=0; i < prerounded.length; i++ ){
+						dh = Math.pow(10,decimals)
+						rounded[i] = Math.round( prerounded[i] * dh ) / dh;
+					}
+					if( mode == "scalar" ){ rounded = rounded.shift() }
+					return( rounded );
+				},
+
+	//	These functions
+	//	return a DataSet
+	distribution:function( ar ){
+					ar = ar.sort();
+					var distribution = [];
+					var value = null;
+					var count = 0;
+					for( var i=0; i < ar.length; i++ ){
+						value = ar[i]
+						count++;
+						if( ar[i+1] != value ){
+							distribution.push( { value: value, count: count } )
+							count = 0;
+						}
+					}
+					distribution = new DataSet( distribution );
+					return( distribution );
+	}
+}
+
+
+//	Define DataSet and its prototype
 function DataSet( data ){
 	this.data = data;
 }
@@ -65,7 +149,8 @@ DataSet.prototype.get = function( attr ){
 	for( var i=0; i < this.data.length; i++ ){
 		ar.push( this.data[i][attr] )
 	}
-	return( ar );
+	dpVec = new dpVector( ar );
+	return( dpVec );
 }
 
 //	returns DataSet
@@ -88,11 +173,11 @@ DataSet.prototype.aggregateByGroup = function( idAttrs, func, value ){
 			var attrKey = melted.data[i][ idAttrs[j] ]
 			castKey += "delimit" + attrKey
 		}
-		melted.data[i].castKey = castKey.hashCode()
+		melted.data[i].castKey = DataPlay.hash(castKey)
 	}
 	
 	//	cycle through all uncasted castKeys
-	var uncastedKeys = melted.get('castKey').unique()
+	var uncastedKeys = melted.get('castKey').unique().data
 	while( uncastedKeys.length > 0 ){
 		// 	remove key from uncasted keys because it will get casted
 		var keyToCast = uncastedKeys.shift();
@@ -116,81 +201,39 @@ DataSet.prototype.aggregateByGroup = function( idAttrs, func, value ){
 	return( casted );
 }
 
-//	turn strings into hashes (for easy lookup)
-//	from: http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
-String.prototype.hashCode = function(){
-    var hash = 0, i, char;
-    if (this.length == 0) return hash;
-    for (i = 0; i < this.length; i++) {
-        char = this.charCodeAt(i);
-        hash = ((hash<<5)-hash)+char;
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash;
-};
+//	a DataPlay.js 1-D array, includes the methods:
+//	mean, unique, intersect, round, distribution
+function dpVector( data ){
+	this.data = data;
+}
 
-//	returns unique values from array
-Array.prototype.unique = function ( ) {
-	return( this.sort().filter(
-		function(el,i,a){
-			if(i==a.indexOf(el)) return 1;return 0
-		}
-	) )
+//	returns vector with unique values
+dpVector.prototype.unique = function ( ) {
+	return( DataPlay.unique( this.data ) )
 }
 
 //	returns means
-Array.prototype.mean = function ( ) {
-	var i = 0, sum = 0;
-	for(i = 0; i < this.length; i++){
-		sum += Number(this[i]);
-	}
-	return( Math.round(sum/this.length * 100)/100 );
+dpVector.prototype.mean = function ( ) {
+	return( DataPlay.mean( this.data ) )
 }
 
 //	returns the unique intersection of the two arrays
-Array.prototype.intersect = function( ar ){
-	inBoth = this.filter(function(n) {
-			if(ar.indexOf(n) == -1)
-				return false;
-			return true;
-		});
-	return( inBoth.unique() );
+dpVector.prototype.intersect = function( ar ){
+	return( DataPlay.intersect( this, ar ) )
 }
 
 //	rounds the object to the specified decimals, default=0
-Array.prototype.round = function( decimals ){
-	//	two modes so you same function can return array or scalar
-	mode = (this instanceof Array) ? "array" : "scalar";
-	var prerounded = this;
-	var rounded = [];
-	if( mode == "scalar" ){ var prerounded=[ prerounded ] }
-	if( typeof decimals == "undefined" ){ decimals = 0 }
-	for( i=0; i < prerounded.length; i++ ){
-		dh = Math.pow(10,decimals)
-		rounded[i] = Math.round( prerounded[i] * dh ) / dh;
-	}
-	if( mode == "scalar" ){ rounded = rounded.shift() }
-	return( rounded );
+dpVector.prototype.round = function( decimals ){
+	return( DataPlay.round( this, decimals ) )
 }
 
-//	returns objects with the rounded value and count
+//	returns DataSet with each unique value and frequency (count)
 //	e.g., [ { value:1, count:4 } , { value:2, count:3 } ]
-Array.prototype.distribution = function( ){
-	ar = this.sort();
-	var distribution = [];
-	var value = null;
-	var count = 0;
-	for( var i=0; i < ar.length; i++ ){
-		value = ar[i]
-		count++;
-		if( ar[i+1] != value ){
-			distribution.push( { value: value, count: count } )
-			count = 0;
-		}
-	}
-	distribution = new DataSet( distribution );
-	return( distribution )
+dpVector.prototype.distribution = function( ){
+	return( DataPlay.distribution( this ) )
 }
+
+
 
 
 /*
@@ -220,9 +263,9 @@ if( rs.where('country','contains','U').data.length !== 3 ){ throw "where contain
 if( rs.where('country','not in','USA').data.length !== 1 ){ throw "where contains failed!" }
 
 //	which countries are listed?
-rs.get('country').unique()
-if( ! ( rs.get('country') instanceof Array ) ){ throw "get failed to retrieve array" }
-if( rs.get('country').unique().length !== 2 ){ throw "unique failed!" }
+rs.get('country').unique().data
+if( ! ( rs.get('country').data instanceof Array ) ){ throw "get failed to retrieve array" }
+if( rs.get('country').unique().data.length !== 2 ){ throw "unique failed!" }
 
 //	what is the average height of the three buildings?
 rs.get('height').mean()
@@ -234,7 +277,7 @@ rs.aggregateByGroup( ['country'], 'mean', 'height' )	// result set
 rs.aggregateByGroup( ['country','name'], 'mean', 'height' )	// result set
 
 //	test castedMeans and demo chaining
-if( rs.aggregateByGroup( ['country'], 'mean', 'height' ).where('country','in','USA').get('height') != 1590.5 ){
+if( rs.aggregateByGroup( ['country'], 'mean', 'height' ).where('country','in','USA').get('height').data != 1590.5 ){
 	throw "casted mean failed!"
 }
 
