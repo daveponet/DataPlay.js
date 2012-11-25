@@ -38,28 +38,22 @@ var DataPlay = {
 					return( Math.round(sum/ar.length * 100)/100 );
 				},
 
-	//	These functions return an array or scalar		
-	round:		function( ar, decimals ){
-					//	two modes so you same function can return array or scalar
-					try{
-						mode = (ar.length > 1) ? "array" : "scalar";
-						}
-					catch(err){
-						mode = "scalar";
-					}
-					var prerounded = ar;
-					var rounded = [];
-					if( mode == "scalar" ){ var prerounded=[ prerounded ] }
+	round:		function( value, decimals ){
 					if( typeof decimals == "undefined" ){ decimals = 0 }
-					for( i=0; i < prerounded.length; i++ ){
-						dh = Math.pow(10,decimals)
-						rounded[i] = Math.round( prerounded[i] * dh ) / dh;
-					}
-					if( mode == "scalar" ){ rounded = rounded.shift() }
-					return( rounded );
+					dh = Math.pow(10,decimals);
+					value = Math.round( value * dh ) / dh;
+					return( value );
 				},
 				
 	//	These functions return an array	
+	roundAr:	function( ar, decimals ){
+					if( typeof decimals == "undefined" ){ decimals = 0 }
+					for( i=0; i < ar.length; i++ ){
+						ar[i] = DataPlay.round( ar[i] )
+					}
+					return( ar );
+				},
+	
 	unique:		function( ar ){
 					return( ar.sort().filter(
 						function(el,i,a){
@@ -223,7 +217,7 @@ dpVector.prototype.intersect = function( ar ){
 
 //	rounds the object to the specified decimals, default=0
 dpVector.prototype.round = function( decimals ){
-	return( new dpVector( DataPlay.round( this.data ) ) )
+	return( new dpVector( DataPlay.roundAr( this.data ) ) )
 }
 
 //	returns DataSet with each unique value and frequency (count)
@@ -340,10 +334,11 @@ toiQs = s.where('question','contains','toi.')
 meanToi = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
 if( ! ( meanToi instanceof DataSet ) ){ throw "Aggregate by failed!" }
 
-//	now round each individual's mean for easier interpretation
-a = meanToi.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
-
-
+//	now round each individual's mean answer for easier interpretation
+meanToi = meanToi.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
+if(meanToi.where('id','in',['user1']).where('time','in',1).data[0].answer != 3){
+	throw "rounding failed!"
+}
 
 
 
