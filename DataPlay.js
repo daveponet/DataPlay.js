@@ -69,9 +69,10 @@ DataSet.prototype.get = function( attr ){
 }
 
 //	returns DataSet
-//	calculates the mean of the "value" attr 
-//	for each unique subset of idAttrs 
-DataSet.prototype.castedMean = function( idAttrs, value ){
+//	This function subsets by each unique set of idAttrs
+//	then performs the specified aggregation function on
+//	the value attribute
+DataSet.prototype.aggregateByGroup = function( idAttrs, func, value ){
 	//	idAttrs is assumed to be an array; turn into array if not already
 	if( ! (idAttrs instanceof Array) ){ idAttrs=[ idAttrs ] }
 
@@ -103,7 +104,12 @@ DataSet.prototype.castedMean = function( idAttrs, value ){
 			newRow[ idAttrs[i] ] = targetRows.data[0][ idAttrs[i] ];
 		}
 		//	calculate the mean of the target rows
-		newRow[value] = targetRows.get(value).mean();
+		if( func == "mean" ){
+			newRow[value] = targetRows.get(value).mean();
+		}
+		else{
+			throw "Invalid aggregation function '" + func + "' passed in.";
+		}
 		casted.push( newRow );
 	}
 	casted = new DataSet( casted );
@@ -223,12 +229,12 @@ rs.get('height').mean()
 if( rs.get('height').mean() != 1966 ){ throw "Mean failed" }
 
 //	what is the average height by country?
-rs.castedMean( ['country'], 'height' )	// result set
+rs.aggregateByGroup( ['country'], 'mean', 'height' )	// result set
 //	what is the average height by country and building name?
-rs.castedMean( ['country','name'], 'height' )	// result set
+rs.aggregateByGroup( ['country','name'], 'mean', 'height' )	// result set
 
 //	test castedMeans and demo chaining
-if( rs.castedMean( ['country'], 'height' ).where('country','in','USA').get('height') != 1590.5 ){
+if( rs.aggregateByGroup( ['country'], 'mean', 'height' ).where('country','in','USA').get('height') != 1590.5 ){
 	throw "casted mean failed!"
 }
 
