@@ -232,58 +232,18 @@ dpVector.prototype.distribution = function( ){
 //
 //	UNIT TESTS & USE CASES
 //
-skyscrapers = [{ "name":"Empire State Building", "country":"USA", "height": 1454 } ,
-				{ "name":"Willis Tower", "country":"USA", "height": 1727 },
-				{ "name":"Burj Khalifa", "country":"UEA", "height": 2717 }]
 
-//	to load in data directly from a CSV
-//	you can use jquery-csv
+//	to load data directly from a CSV you can use jquery-csv
 //	see http://code.google.com/p/jquery-csv/
-/*	
-*	jQuery.ajax( CSVpath, {success:function(data){
-*			res = $.csv.toObjects(data);
-*			rs = DataSet( res );
-*		}
-*	});
-*/	
+	/*	
+	*	jQuery.ajax( CSVpath, {success:function(data){
+	*			res = $.csv.toObjects(data);
+	*			rs = DataSet( res );
+	*		}
+	*	});
+	*/	
 
-rs = new DataSet( skyscrapers )
-
-//	look up rows by exact match and partial match
-rs.where('country','in','USA')	//	example
-if( rs.where('country','in','USA').data.length !== 2 ){ throw "where is failed!" }
-if( rs.where('country','contains','U').data.length !== 3 ){ throw "where contains failed!" }
-if( rs.where('country','not in','USA').data.length !== 1 ){ throw "where contains failed!" }
-
-//	which countries are listed?
-rs.get('country').unique().data
-if( ! ( rs.get('country').data instanceof Array ) ){ throw "get failed to retrieve array" }
-if( rs.get('country').unique().data.length !== 2 ){ throw "unique failed!" }
-
-//	what is the average height of the three buildings?
-rs.get('height').mean()
-if( rs.get('height').mean() != 1966 ){ throw "Mean failed" }
-
-//	what is the average height by country?
-rs.aggregateByGroup( ['country'], DataPlay.mean , 'height' )	// result set
-//	what is the average height by country and building name?
-rs.aggregateByGroup( ['country','name'], DataPlay.mean , 'height' )	// result set
-
-//	test castedMeans and demo chaining
-if( rs.aggregateByGroup( ['country'], DataPlay.mean , 'height' ).where('country','in','USA').get('height').data != 1590.5 ){
-	throw "casted mean failed!"
-}
-
-rs.aggregateByGroup( ['country'], DataPlay.round , 'height' )
-
-//	clean out the unit objects
-delete skyscrapers; delete rs;
-
-console.log( "DataPlay.js unit tests complete" )
-
-
-//	Unit Tests and Use Cases
-
+//	a fake dataset
 survey = [	{ "id":"user1","time":1, "question":"toi.1", "answer": 2 } ,
 			{ "id":"user1","time":1, "question":"toi.2", "answer": 3 },
 			{ "id":"user1","time":2, "question":"toi.1", "answer": 2 },
@@ -301,6 +261,7 @@ s	= new DataSet( survey )
 
 //	who were the users?
 s.get('id').unique().data
+//	returns ['user1','user2']
 if( ! (s.get('id') instanceof dpVector) ){ throw "get failed!"; }
 if( s.get('id').unique().data.length !== 2 ){ throw "unique failed!"; }
 
@@ -340,9 +301,10 @@ if(meanToi.where('id','in',['user1']).where('time','in',1).data[0].answer != 3){
 	throw "rounding failed!"
 }
 
+//	clean up after unit tests
+delete survey; delete s; delete ut; delete toiQs; delete meanToi;
 
-
-
+console.log( "DataPlay.js unit tests complete")
 
 
 
