@@ -6,7 +6,7 @@
 //
 //	Functions for sub-selecting and aggregating data with JavaScript.
 //	There are three classes:
-//		DataPlay	a singleton with functions used by dpVector and DataSet.
+//		DataPlay	a singleton with various functions used by other classes.
 //		dpVector 	a wrapper for 1-D arrays.
 //		dpList 		a wrapper for object arrays.
 //	
@@ -14,6 +14,7 @@
 //	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 //
 //////////////////////////////////////////////////////////////////////////////////////	
+
 
 //	Define DataPlay singleton and some basic functions
 var DataPlay = {
@@ -86,7 +87,39 @@ var DataPlay = {
 					}
 					distribution = new dpList( distribution );
 					return( distribution );
-	}
+				},
+				
+	//	These functions return an object array, they are used by dpList.where()
+	isIn:		function( target, attr, haystack ){
+					if( ! (haystack instanceof Array) ){ haystack=[ haystack ] }
+					var filtered = target.filter( function(x){
+						var output = $.inArray( x[attr] , haystack ) !== -1;
+						return( output );
+					} )
+					return( filtered );
+				},
+	notIn:		function( target, attr, haystack ){
+					if( ! (haystack instanceof Array) ){ haystack=[ haystack ] }
+					var filtered = target.filter( function(x){
+						var output = $.inArray( x[attr] , hastack ) == -1;
+						return( output );
+					} )
+					return( filtered );
+				},
+	contains:	function( target, attr, haystack ){
+					var filtered = target.filter( function(x){
+						var output = x[attr].search(haystack) !== -1;
+						return( output );
+					} )
+					return( filtered );
+				},
+	notContains:function( target, attr, haystack ){
+					var filtered = target.filter( function(x){
+						var output = x[attr].search(haystack) == -1;
+						return( output );
+					} )
+					return( filtered );
+				}
 }
 
 
@@ -101,43 +134,13 @@ function dpList( data ){
 //	operation (op) accepts: "in" and "not in" if value is arrays or scalars
 //							"contains" and "does not contain" as strings
 //	value is the value to be matched on using the operation
-dpList.prototype.where = function( attr, op, value ){
+dpList.prototype.where = function( attr, func, value ){
 	var filtered;
-	if( op == "in" ){
-		// turn non-arrays into arrays
-		if( ! (value instanceof Array) ){ value=[ value ] }
-		filtered = this.data.filter( function(x){
-			var output = $.inArray( x[attr] , value ) !== -1;
-			return( output );
-		} )
-	}
-	else if( op == "not in" ){
-		// turn non-arrays into arrays
-		if( ! (value instanceof Array) ){ value=[ value ] }
-		filtered = this.data.filter( function(x){
-			var output = $.inArray( x[attr] , value ) == -1;
-			return( output );
-		} )
-	}
-	else if( op == "contains" ){
-		filtered = this.data.filter( function(x){
-			var output = x[attr].search(value) !== -1;
-			return( output );
-		} )
-	}
-	else if( op == "does not contain" ){
-		filtered = this.data.filter( function(x){
-			var output = x[attr].search(value) == -1;
-			return( output );
-		} )
-	}
-	else{
-		throw "Invalid operation: '" + op + "' passed in";
-	}
+	filtered = func( this.data, attr, value);
 	
 	//	return a dpList
-	DS = new dpList( filtered )
-	return( DS );
+	dpl = new dpList( filtered )
+	return( dpl );
 }
 
 //	returns attr (attribute) as an array
@@ -178,7 +181,7 @@ dpList.prototype.aggregateByGroup = function( idAttrs, func, value ){
 	while( uncastedKeys.length > 0 ){
 		// 	remove key from uncasted keys because it will get casted
 		var keyToCast = uncastedKeys.shift();
-		var targetRows = melted.where('castKey','in',keyToCast);
+		var targetRows = melted.where('castKey',DataPlay.isIn,keyToCast);
 		//	ensure the new row does not have any of the old cols
 		//	which were not used for subsetting or aggregated
 		var newRow = {}
@@ -270,34 +273,34 @@ s.get('id').unique().data.length
 if( s.get('id').unique().data.length !== 2 ){ throw "get unique failed" }
 
 //	get the theories of intelligence questions with list of question names
-ut = s.where('question','in',['toi.1','toi.2']).data
-if( ut.length !== 8 ){ throw "where failed!" }
+ut = s.where('question', DataPlay.isIn ,['toi.1','toi.2']).data
+if( ut.length !== 8 ){ throw "where in failed!" }
 //	get the theories of intelligence questions by string match (contain "toi.")
-ut = s.where('question','contains','toi.').data
-if( ut.length !== 8 ){ throw "where is failed!" }
+ut = s.where('question',DataPlay.contains,'toi.').data
+if( ut.length !== 8 ){ throw "where contains failed!" }
 
 //	get the theories of intelligence questions from time 1
-ut = s.where('question','contains','toi.').where('time','in',1)
+ut = s.where('question',DataPlay.contains,'toi.').where('time',DataPlay.isIn,1)
 if( ut.data.length !== 4){
 	throw "chained where failed!";
 }
 
 //	get the mean answer for the time 1 theories of intelligence questions
-ut = s.where('question','contains','toi.').where('time','in',1).get('answer').mean()
+ut = s.where('question',DataPlay.contains,'toi.').where('time',DataPlay.isIn,1).get('answer').mean()
 if( ut !== 3.5 ){ throw "mean failed" }
-if( s.where('question','does not contain','toi.').data.length !== 2 ){ 
+if( s.where('question',DataPlay.notContains,'toi.').data.length !== 2 ){ 
 	throw "does not contain failed!" 
 }
 
 //	calculate each user's theories of intelligence at each different time
 //	you could do this all on one line, but I break it up for readability
-toiQs = s.where('question','contains','toi.')
+toiQs = s.where('question',DataPlay.contains,'toi.')
 toiScore = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
 if( ! ( toiScore instanceof dpList ) ){ throw "Aggregate by failed!" }
 
 //	now round each individual's score for easier interpretation
 ut = toiScore.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
-if(ut.where('id','in',['user1']).where('time','in',1).data[0].answer != 3){
+if(ut.where('id',DataPlay.isIn,['user1']).where('time',DataPlay.isIn,1).data[0].answer != 3){
 	throw "rounding failed!"
 }
 
@@ -307,9 +310,9 @@ if( toiScore.get('answer').mean() != 3.88 ){ throw "Mean of means failed!" }
 
 //	what is the distribution of individuals'
 // 	theories of intelligence scores at time 1?
-ut = toiScore.where('time','in',1).get('answer').distribution()
+ut = toiScore.where('time',DataPlay.isIn,1).get('answer').distribution()
 //	there should be one person with a mean of 2.5
-if( ut.where('value','in',2.5).get('count').data[0] !== 1 ){
+if( ut.where('value',DataPlay.isIn,2.5).get('count').data[0] !== 1 ){
 	throw "Distribution failed!";
 }
 
