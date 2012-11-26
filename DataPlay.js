@@ -253,7 +253,7 @@ survey = [	{ "id":"user1","time":1, "question":"toi.1", "answer": 2 } ,
 			{ "id":"user2","time":1, "question":"toi.2", "answer": 5 },
 			{ "id":"user2","time":2, "question":"toi.1", "answer": 5 },
 			{ "id":"user2","time":2, "question":"toi.2", "answer": 6 },
-			{ "id":"user2","time":4, "question":"se.1", "answer": 5 },
+			{ "id":"user2","time":2, "question":"se.1", "answer": 5 },
 			]
 
 //	turn the survey results into a dpList
@@ -301,7 +301,7 @@ if(ut.where('id','in',['user1']).where('time','in',1).data[0].answer != 3){
 	throw "rounding failed!"
 }
 
-//	what is the mean of individuals' TOI scores at each time?
+//	what is the mean of individuals' TOI scores across time?
 toiScore.get('answer').mean()
 if( toiScore.get('answer').mean() != 3.88 ){ throw "Mean of means failed!" }
 
