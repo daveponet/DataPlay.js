@@ -223,7 +223,7 @@ dpVector.prototype.round = function( decimals ){
 //	returns dpList with each unique value and frequency (count)
 //	e.g., [ { value:1, count:4 } , { value:2, count:3 } ]
 dpVector.prototype.distribution = function( ){
-	return( DataPlay.distribution( this ) )
+	return( DataPlay.distribution( this.data ) )
 }
 
 
@@ -292,13 +292,25 @@ if( s.where('question','does not contain','toi.').data.length !== 2 ){
 //	calculate each user's theories of intelligence at each different time
 //	you could do this all on one line, but I break it up for readability
 toiQs = s.where('question','contains','toi.')
-meanToi = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
-if( ! ( meanToi instanceof dpList ) ){ throw "Aggregate by failed!" }
+toiScore = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
+if( ! ( toiScore instanceof dpList ) ){ throw "Aggregate by failed!" }
 
-//	now round each individual's mean answer for easier interpretation
-meanToi = meanToi.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
-if(meanToi.where('id','in',['user1']).where('time','in',1).data[0].answer != 3){
+//	now round each individual's score for easier interpretation
+ut = toiScore.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
+if(ut.where('id','in',['user1']).where('time','in',1).data[0].answer != 3){
 	throw "rounding failed!"
+}
+
+//	what is the mean of individuals' TOI scores at each time?
+toiScore.get('answer').mean()
+if( toiScore.get('answer').mean() != 3.88 ){ throw "Mean of means failed!" }
+
+//	what is the distribution of individuals'
+// 	theories of intelligence scores at time 1?
+ut = toiScore.where('time','in',1).get('answer').distribution()
+//	there should be one person with a mean of 2.5
+if( ut.where('value','in',2.5).get('count').data[0] !== 1 ){
+	throw "Distribution failed!";
 }
 
 //	clean up after unit tests
