@@ -8,7 +8,7 @@
 //	There are three classes:
 //		DataPlay	a singleton with functions used by dpVector and DataSet.
 //		dpVector 	a wrapper for 1-D arrays.
-//		DataSet 	a wrapper for object arrays.
+//		dpList 		a wrapper for object arrays.
 //	
 //	Depends jQuery
 //	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
@@ -70,7 +70,7 @@ var DataPlay = {
 					return( DataPlay.unique(inBoth) );
 				},
 
-	//	These functions return a DataSet
+	//	These functions return a dpList
 	distribution:function( ar ){
 					ar = ar.sort();
 					var distribution = [];
@@ -84,24 +84,24 @@ var DataPlay = {
 							count = 0;
 						}
 					}
-					distribution = new DataSet( distribution );
+					distribution = new dpList( distribution );
 					return( distribution );
 	}
 }
 
 
-//	DATASET DEFINITION
-//	DATASET DEFINITION
-function DataSet( data ){
+//	dpList DEFINITION
+//	dpList DEFINITION
+function dpList( data ){
 	this.data = data;
 }
 
-//	returns DataSet matching where clause
+//	returns dpList matching where clause
 //	where specifies object attribute to match on
 //	operation (op) accepts: "in" and "not in" if value is arrays or scalars
 //							"contains" and "does not contain" as strings
 //	value is the value to be matched on using the operation
-DataSet.prototype.where = function( attr, op, value ){
+dpList.prototype.where = function( attr, op, value ){
 	var filtered;
 	if( op == "in" ){
 		// turn non-arrays into arrays
@@ -135,13 +135,13 @@ DataSet.prototype.where = function( attr, op, value ){
 		throw "Invalid operation: '" + op + "' passed in";
 	}
 	
-	//	return a DataSet
-	DS = new DataSet( filtered )
+	//	return a dpList
+	DS = new dpList( filtered )
 	return( DS );
 }
 
 //	returns attr (attribute) as an array
-DataSet.prototype.get = function( attr ){
+dpList.prototype.get = function( attr ){
 	var ar = [];
 	for( var i=0; i < this.data.length; i++ ){
 		ar.push( this.data[i][attr] )
@@ -150,16 +150,16 @@ DataSet.prototype.get = function( attr ){
 	return( dpVec );
 }
 
-//	returns DataSet
+//	returns dpList
 //	This function subsets by each unique set of idAttrs
 //	then performs the specified aggregation function on
 //	the value attribute
-DataSet.prototype.aggregateByGroup = function( idAttrs, func, value ){
+dpList.prototype.aggregateByGroup = function( idAttrs, func, value ){
 	//	idAttrs is assumed to be an array; turn into array if not already
 	if( ! (idAttrs instanceof Array) ){ idAttrs=[ idAttrs ] }
 
 	//	the original data are in "melted" or "long" form
-	var melted = new DataSet(this.data);
+	var melted = new dpList(this.data);
 	//	they get casted before aggregation
 	var casted = [];
 		
@@ -188,7 +188,7 @@ DataSet.prototype.aggregateByGroup = function( idAttrs, func, value ){
 		newRow[value] = func( targetRows.get(value).data );
 		casted.push( newRow );
 	}
-	casted = new DataSet( casted );
+	casted = new dpList( casted );
 	return( casted );
 }
 
@@ -220,7 +220,7 @@ dpVector.prototype.round = function( decimals ){
 	return( new dpVector( DataPlay.roundAr( this.data ) ) )
 }
 
-//	returns DataSet with each unique value and frequency (count)
+//	returns dpList with each unique value and frequency (count)
 //	e.g., [ { value:1, count:4 } , { value:2, count:3 } ]
 dpVector.prototype.distribution = function( ){
 	return( DataPlay.distribution( this ) )
@@ -238,12 +238,12 @@ dpVector.prototype.distribution = function( ){
 	/*	
 	*	jQuery.ajax( CSVpath, {success:function(data){
 	*			res = $.csv.toObjects(data);
-	*			rs = DataSet( res );
+	*			rs = dpList( res );
 	*		}
 	*	});
 	*/	
 
-//	a fake dataset
+//	a fake data set
 survey = [	{ "id":"user1","time":1, "question":"toi.1", "answer": 2 } ,
 			{ "id":"user1","time":1, "question":"toi.2", "answer": 3 },
 			{ "id":"user1","time":2, "question":"toi.1", "answer": 2 },
@@ -256,8 +256,8 @@ survey = [	{ "id":"user1","time":1, "question":"toi.1", "answer": 2 } ,
 			{ "id":"user2","time":4, "question":"se.1", "answer": 5 },
 			]
 
-//	turn the survey results into a DataSet
-s	= new DataSet( survey )
+//	turn the survey results into a dpList
+s	= new dpList( survey )
 
 //	who were the users?
 s.get('id').unique().data
@@ -293,7 +293,7 @@ if( s.where('question','does not contain','toi.').data.length !== 2 ){
 //	you could do this all on one line, but I break it up for readability
 toiQs = s.where('question','contains','toi.')
 meanToi = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
-if( ! ( meanToi instanceof DataSet ) ){ throw "Aggregate by failed!" }
+if( ! ( meanToi instanceof dpList ) ){ throw "Aggregate by failed!" }
 
 //	now round each individual's mean answer for easier interpretation
 meanToi = meanToi.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
