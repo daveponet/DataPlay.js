@@ -6,7 +6,7 @@
 //
 //	Functions for sub-selecting and aggregating data with JavaScript.
 //	There are three classes:
-//		DataPlay	a singleton with various functions used by other classes.
+//		dp			a singleton with various functions used by other classes.
 //		dpVector 	a wrapper for 1-D arrays.
 //		dpList 		a wrapper for object arrays.
 //	
@@ -16,16 +16,16 @@
 //////////////////////////////////////////////////////////////////////////////////////	
 
 
-//	Define DataPlay singleton and some basic functions
-var DataPlay = {
+//	Define dp singleton and some basic functions
+var dp = {
 
 	//	These functions return a scalar
 	hash:		function( str ){
-					var hash = 0, i, char;
+					var hash = 0, i, cha;
 					if (str.length == 0) return hash;
 					for (i = 0; i < str.length; i++) {
-						char = str.charCodeAt(i);
-						hash = ((hash<<5)-hash)+char;
+						cha = str.charCodeAt(i);
+						hash = ((hash<<5)-hash)+cha;
 						hash = hash & hash; // Convert to 32bit integer
 					}
 					return hash;
@@ -41,7 +41,7 @@ var DataPlay = {
 
 	round:		function( value, decimals ){
 					if( typeof decimals == "undefined" ){ decimals = 0 }
-					dh = Math.pow(10,decimals);
+					var dh = Math.pow(10,decimals);
 					value = Math.round( value * dh ) / dh;
 					return( value );
 				},
@@ -49,8 +49,8 @@ var DataPlay = {
 	//	These functions return an array	
 	roundAr:	function( ar, decimals ){
 					if( typeof decimals == "undefined" ){ decimals = 0 }
-					for( i=0; i < ar.length; i++ ){
-						ar[i] = DataPlay.round( ar[i] )
+					for( var i=0; i < ar.length; i++ ){
+						ar[i] = dp.round( ar[i] )
 					}
 					return( ar );
 				},
@@ -63,12 +63,12 @@ var DataPlay = {
 				},
 
 	intersect:	function( ar1, ar2 ){
-					inBoth = ar1.filter(function(n) {
+					var inBoth = ar1.filter(function(n) {
 							if(ar2.indexOf(n) == -1)
 								return false;
 							return true;
 						});
-					return( DataPlay.unique(inBoth) );
+					return( dp.unique(inBoth) );
 				},
 
 	//	These functions return a dpList
@@ -85,36 +85,36 @@ var DataPlay = {
 							count = 0;
 						}
 					}
-					distribution = new dpList( distribution );
+					var distribution = new dpList( distribution );
 					return( distribution );
 				},
 				
 	//	These functions return an object array, they are used by dpList.where()
-	isIn:		function( target, attr, haystack ){
+	isIn:		function( objAr, attr, haystack ){
 					if( ! (haystack instanceof Array) ){ haystack=[ haystack ] }
-					var filtered = target.filter( function(x){
+					var filtered = objAr.filter( function(x){
 						var output = $.inArray( x[attr] , haystack ) !== -1;
 						return( output );
 					} )
 					return( filtered );
 				},
-	notIn:		function( target, attr, haystack ){
+	isNotIn:		function( objAr, attr, haystack ){
 					if( ! (haystack instanceof Array) ){ haystack=[ haystack ] }
-					var filtered = target.filter( function(x){
+					var filtered = objAr.filter( function(x){
 						var output = $.inArray( x[attr] , hastack ) == -1;
 						return( output );
 					} )
 					return( filtered );
 				},
-	contains:	function( target, attr, haystack ){
-					var filtered = target.filter( function(x){
+	contains:	function( objAr, attr, haystack ){
+					var filtered = objAr.filter( function(x){
 						var output = x[attr].search(haystack) !== -1;
 						return( output );
 					} )
 					return( filtered );
 				},
-	notContains:function( target, attr, haystack ){
-					var filtered = target.filter( function(x){
+	doesNotContain:function( objAr, attr, haystack ){
+					var filtered = objAr.filter( function(x){
 						var output = x[attr].search(haystack) == -1;
 						return( output );
 					} )
@@ -131,15 +131,14 @@ function dpList( data ){
 
 //	returns dpList matching where clause
 //	where specifies object attribute to match on
-//	operation (op) accepts: "in" and "not in" if value is arrays or scalars
-//							"contains" and "does not contain" as strings
+//	function is the function used for matching attr against value
 //	value is the value to be matched on using the operation
 dpList.prototype.where = function( attr, func, value ){
 	var filtered;
 	filtered = func( this.data, attr, value);
 	
 	//	return a dpList
-	dpl = new dpList( filtered )
+	var dpl = new dpList( filtered )
 	return( dpl );
 }
 
@@ -149,7 +148,7 @@ dpList.prototype.get = function( attr ){
 	for( var i=0; i < this.data.length; i++ ){
 		ar.push( this.data[i][attr] )
 	}
-	dpVec = new dpVector( ar );
+	var dpVec = new dpVector( ar );
 	return( dpVec );
 }
 
@@ -166,14 +165,14 @@ dpList.prototype.aggregateByGroup = function( idAttrs, func, value ){
 	//	they get casted before aggregation
 	var casted = [];
 		
-	//	create a cast-key so it's easier track rows
+	//	create a cast-key so it's easier to track rows
 	for( var i=0; i < melted.data.length; i++){
 		var castKey = "";
 		for( var j=0; j < idAttrs.length; j++){
 			var attrKey = melted.data[i][ idAttrs[j] ]
 			castKey += "delimit" + attrKey
 		}
-		melted.data[i].castKey = DataPlay.hash(castKey)
+		melted.data[i].castKey = dp.hash(castKey)
 	}
 	
 	//	cycle through all uncasted castKeys
@@ -181,7 +180,7 @@ dpList.prototype.aggregateByGroup = function( idAttrs, func, value ){
 	while( uncastedKeys.length > 0 ){
 		// 	remove key from uncasted keys because it will get casted
 		var keyToCast = uncastedKeys.shift();
-		var targetRows = melted.where('castKey',DataPlay.isIn,keyToCast);
+		var targetRows = melted.where('castKey',dp.isIn,keyToCast);
 		//	ensure the new row does not have any of the old cols
 		//	which were not used for subsetting or aggregated
 		var newRow = {}
@@ -205,28 +204,28 @@ function dpVector( data ){
 
 //	returns mean
 dpVector.prototype.mean = function ( ) {
-	return( DataPlay.mean( this.data ) )
+	return( dp.mean( this.data ) )
 }
 
 //	returns dpVector with unique values
 dpVector.prototype.unique = function ( ) {
-	return( new dpVector( DataPlay.unique( this.data ) ) )
+	return( new dpVector( dp.unique( this.data ) ) )
 }
 
 //	returns the unique intersection of the two arrays
 dpVector.prototype.intersect = function( ar ){
-	return( new dpVector( DataPlay.intersect( this.data ) ) )
+	return( new dpVector( dp.intersect( this.data ) ) )
 }
 
 //	rounds the object to the specified decimals, default=0
 dpVector.prototype.round = function( decimals ){
-	return( new dpVector( DataPlay.roundAr( this.data ) ) )
+	return( new dpVector( dp.roundAr( this.data ) ) )
 }
 
 //	returns dpList with each unique value and frequency (count)
 //	e.g., [ { value:1, count:4 } , { value:2, count:3 } ]
 dpVector.prototype.distribution = function( ){
-	return( DataPlay.distribution( this.data ) )
+	return( dp.distribution( this.data ) )
 }
 
 
@@ -273,34 +272,34 @@ s.get('id').unique().data.length
 if( s.get('id').unique().data.length !== 2 ){ throw "get unique failed" }
 
 //	get the theories of intelligence questions with list of question names
-ut = s.where('question', DataPlay.isIn ,['toi.1','toi.2']).data
+ut = s.where('question', dp.isIn ,['toi.1','toi.2']).data
 if( ut.length !== 8 ){ throw "where in failed!" }
 //	get the theories of intelligence questions by string match (contain "toi.")
-ut = s.where('question',DataPlay.contains,'toi.').data
+ut = s.where('question',dp.contains,'toi.').data
 if( ut.length !== 8 ){ throw "where contains failed!" }
 
 //	get the theories of intelligence questions from time 1
-ut = s.where('question',DataPlay.contains,'toi.').where('time',DataPlay.isIn,1)
+ut = s.where('question',dp.contains,'toi.').where('time',dp.isIn,1)
 if( ut.data.length !== 4){
 	throw "chained where failed!";
 }
 
 //	get the mean answer for the time 1 theories of intelligence questions
-ut = s.where('question',DataPlay.contains,'toi.').where('time',DataPlay.isIn,1).get('answer').mean()
+ut = s.where('question',dp.contains,'toi.').where('time',dp.isIn,1).get('answer').mean()
 if( ut !== 3.5 ){ throw "mean failed" }
-if( s.where('question',DataPlay.notContains,'toi.').data.length !== 2 ){ 
+if( s.where('question',dp.doesNotContain,'toi.').data.length !== 2 ){ 
 	throw "does not contain failed!" 
 }
 
 //	calculate each user's theories of intelligence at each different time
 //	you could do this all on one line, but I break it up for readability
-toiQs = s.where('question',DataPlay.contains,'toi.')
-toiScore = toiQs.aggregateByGroup( ['id','time'], DataPlay.mean, 'answer' )
+toiQs = s.where('question',dp.contains,'toi.')
+toiScore = toiQs.aggregateByGroup( ['id','time'], dp.mean, 'answer' )
 if( ! ( toiScore instanceof dpList ) ){ throw "Aggregate by failed!" }
 
 //	now round each individual's score for easier interpretation
-ut = toiScore.aggregateByGroup(['id','time'], DataPlay.round, 'answer' )
-if(ut.where('id',DataPlay.isIn,['user1']).where('time',DataPlay.isIn,1).data[0].answer != 3){
+ut = toiScore.aggregateByGroup(['id','time'], dp.round, 'answer' )
+if(ut.where('id',dp.isIn,['user1']).where('time',dp.isIn,1).data[0].answer != 3){
 	throw "rounding failed!"
 }
 
@@ -310,9 +309,9 @@ if( toiScore.get('answer').mean() != 3.88 ){ throw "Mean of means failed!" }
 
 //	what is the distribution of individuals'
 // 	theories of intelligence scores at time 1?
-ut = toiScore.where('time',DataPlay.isIn,1).get('answer').distribution()
+ut = toiScore.where('time',dp.isIn,1).get('answer').distribution()
 //	there should be one person with a mean of 2.5
-if( ut.where('value',DataPlay.isIn,2.5).get('count').data[0] !== 1 ){
+if( ut.where('value',dp.isIn,2.5).get('count').data[0] !== 1 ){
 	throw "Distribution failed!";
 }
 

@@ -16,16 +16,62 @@
 		<script type="text/javascript" src="jqplot/plugins/jqplot.pointLabels.min.js"></script>
 		<link rel="stylesheet" type="text/css" href="jqplot/jquery.jqplot.min.css" />
 
-	
-	
+		<!-- Load jQuery-csv -->
+		<script src="jquery.csv-0.71.js" type="text/javascript"></script>
 		
 	</head>
 	<body>
 		
-		<div id="chart1" style="height:400px;width:600px; "></div> 
+		<div id="chart1" style="width:600px; height:400px;"></div> 
 		<div id="chart3" style="width:600px; height:300px;"></div>
 		
 		<script type='text/javascript'>
+			
+	function computeReport( res ){
+		r = new dpList( res )
+		
+		//	let's add a new attribute "time" mapping stage ids to times
+		$(r.data).each( function(x){
+			if( r.data[x].stage_id == "534457984"  ){ r.data[x].time = 1 }
+			if( r.data[x].stage_id == "1365280313" ){ r.data[x].time = 2 }
+		} )
+		
+		s1UserCount = r.where('time', dp.isIn ,1).get('user_id').unique().data.length
+		console.log(s1UserCount)
+
+		s2UserCount = r.where('time', dp.isIn, 2).get('user_id').unique().data.length
+		console.log(s2UserCount)
+
+		gmsUsers = r.where('question',dp.isIn,'condition').where('value',dp.contains,'gms').get('user_id').unique().data
+		ctlUsers = r.where('question',dp.isIn,'condition').where('value',dp.doesNotContain,'gms').get('user_id').unique().data
+
+		//	get all the toi rows
+		toiRows = r.where('question',dp.contains,'toi.')
+		//	calculate the mean for each user/stage combination
+		toiMeans = toiRows.aggregateByGroup(['user_id','time'], dp.mean , 'value')
+		s1ToiMean = toiMeans.where('time', dp.isIn , 1).get('value').mean()
+		s2ToiMean = toiMeans.where('time', dp.isIn , 2).get('value').mean()
+
+		//	now do the same for gms and control separately
+		s1ToiMeanGms = toiMeans.where('time',dp.isIn ,1).where('user_id',dp.isIn,gmsUsers).get('value').mean()
+		s2ToiMeanGms = toiMeans.where('time',dp.isIn ,2).where('user_id',dp.isIn,gmsUsers).get('value').mean()
+		s1ToiMeanCtl = toiMeans.where('time',dp.isIn ,1).where('user_id',dp.isIn,ctlUsers).get('value').mean()
+		s2ToiMeanCtl = toiMeans.where('time',dp.isIn ,2).where('user_id',dp.isIn,ctlUsers).get('value').mean()
+		
+		//	update the DOM
+	//	$('.s1_toi').html(s1ToiMean);
+	//	$('.s2_toi').html(s2ToiMean);
+
+	}
+	
+	//	Load in the CSV and start the report
+	jQuery.ajax('CSVs/small_set.csv', {success:function(data){
+			res = $.csv.toObjects(data);
+			computeReport(res);
+		}
+	});
+
+
 $(document).ready(function(){
     var s1 = [200, 600, 700, 1000];
     var s2 = [460, -210, 690, 820];
