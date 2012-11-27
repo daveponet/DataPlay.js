@@ -23,154 +23,104 @@
 	<body>
 		
 		<div id="chart1" style="width:600px; height:400px;"></div> 
-		<div id="chart3" style="width:600px; height:300px;"></div>
 		
 		<script type='text/javascript'>
+
+		//	Load in the CSV and start the report
+		jQuery.ajax('CSVs/small_set.csv', {success:function(data){
+				res = $.csv.toObjects(data);
+				computeReport(res);
+			}
+		});
+
+		function computeReport( res ){
+			r = new dpList( res )
+
+			//	let's add a new attribute "time" mapping stage ids to times
+			$(r.data).each( function(x){
+				if( r.data[x].stage_id == "534457984"  ){ r.data[x].time = 1 }
+				if( r.data[x].stage_id == "1365280313" ){ r.data[x].time = 2 }
+			} )
+
+			s1UserCount = r.where('time', dp.isIn ,1).get('user_id').unique().data.length
+			console.log(s1UserCount)
+
+			s2UserCount = r.where('time', dp.isIn, 2).get('user_id').unique().data.length
+			console.log(s2UserCount)
+
+			gmsUsers = r.where('question',dp.isIn,'condition').where('value',dp.contains,'gms').get('user_id').unique().data
+			ctlUsers = r.where('question',dp.isIn,'condition').where('value',dp.doesNotContain,'gms').get('user_id').unique().data
+
+			//	get all the toi rows
+			toiRows = r.where('question',dp.contains,'toi.')
+			//	calculate the mean for each user/stage combination
+			toiMeans = toiRows.aggregateByGroup(['user_id','time'], dp.mean , 'value')
+			s1ToiMean = toiMeans.where('time', dp.isIn , 1).get('value').mean()
+			s2ToiMean = toiMeans.where('time', dp.isIn , 2).get('value').mean()
+
+			//	now do the same for gms and control separately
+			s1ToiMeanGms = toiMeans.where('time',dp.isIn ,1).where('user_id',dp.isIn,gmsUsers).get('value').mean()
+			s2ToiMeanGms = toiMeans.where('time',dp.isIn ,2).where('user_id',dp.isIn,gmsUsers).get('value').mean()
+			s1ToiMeanCtl = toiMeans.where('time',dp.isIn ,1).where('user_id',dp.isIn,ctlUsers).get('value').mean()
+			s2ToiMeanCtl = toiMeans.where('time',dp.isIn ,2).where('user_id',dp.isIn,ctlUsers).get('value').mean()
+
+			//	update the DOM
+			//	$('.s1_toi').html(s1ToiMean);
+			//	$('.s2_toi').html(s2ToiMean);
+			startPlotting();
+		}
+
+		function startPlotting(){
+			var s1 = [s1ToiMeanGms, s2ToiMeanGms];
+			var s2 = [s1ToiMeanCtl, s2ToiMeanCtl];
 			
-	function computeReport( res ){
-		r = new dpList( res )
-		
-		//	let's add a new attribute "time" mapping stage ids to times
-		$(r.data).each( function(x){
-			if( r.data[x].stage_id == "534457984"  ){ r.data[x].time = 1 }
-			if( r.data[x].stage_id == "1365280313" ){ r.data[x].time = 2 }
-		} )
-		
-		s1UserCount = r.where('time', dp.isIn ,1).get('user_id').unique().data.length
-		console.log(s1UserCount)
+			// Can specify a custom tick Array.
+			// Ticks should match up one for each y value (category) in the series.
+			var ticks = ['Pre Study','Post Study'];
 
-		s2UserCount = r.where('time', dp.isIn, 2).get('user_id').unique().data.length
-		console.log(s2UserCount)
-
-		gmsUsers = r.where('question',dp.isIn,'condition').where('value',dp.contains,'gms').get('user_id').unique().data
-		ctlUsers = r.where('question',dp.isIn,'condition').where('value',dp.doesNotContain,'gms').get('user_id').unique().data
-
-		//	get all the toi rows
-		toiRows = r.where('question',dp.contains,'toi.')
-		//	calculate the mean for each user/stage combination
-		toiMeans = toiRows.aggregateByGroup(['user_id','time'], dp.mean , 'value')
-		s1ToiMean = toiMeans.where('time', dp.isIn , 1).get('value').mean()
-		s2ToiMean = toiMeans.where('time', dp.isIn , 2).get('value').mean()
-
-		//	now do the same for gms and control separately
-		s1ToiMeanGms = toiMeans.where('time',dp.isIn ,1).where('user_id',dp.isIn,gmsUsers).get('value').mean()
-		s2ToiMeanGms = toiMeans.where('time',dp.isIn ,2).where('user_id',dp.isIn,gmsUsers).get('value').mean()
-		s1ToiMeanCtl = toiMeans.where('time',dp.isIn ,1).where('user_id',dp.isIn,ctlUsers).get('value').mean()
-		s2ToiMeanCtl = toiMeans.where('time',dp.isIn ,2).where('user_id',dp.isIn,ctlUsers).get('value').mean()
-		
-		//	update the DOM
-	//	$('.s1_toi').html(s1ToiMean);
-	//	$('.s2_toi').html(s2ToiMean);
-
-	}
-	
-	//	Load in the CSV and start the report
-	jQuery.ajax('CSVs/small_set.csv', {success:function(data){
-			res = $.csv.toObjects(data);
-			computeReport(res);
+			plot1 = $.jqplot('chart1', [s1, s2], {
+				// The "seriesDefaults" option is an options object that will
+				// be applied to all series in the chart.
+				seriesDefaults:{
+					renderer:$.jqplot.BarRenderer,
+					rendererOptions: {fillToZero: true},
+					shadow: false
+				},
+				// Custom labels for the series are specified with the "label"
+				// option on the series option.  Here a series option object
+				// is specified for each series.
+				series:[
+					{label:'Treatment Group'},
+					{label:'Control Group'}
+				],
+				// Show the legend and put it outside the grid, but inside the
+				// plot container, shrinking the grid to accomodate the legend.
+				// A value of "outside" would not shrink the grid and allow
+				// the legend to overflow the container.
+				legend: {
+					show: true,
+					placement: 'outsideGrid'
+				},
+				axes: {
+					// Use a category axis on the x axis and use our custom ticks.
+					xaxis: {
+						renderer: $.jqplot.CategoryAxisRenderer,
+						ticks: ticks,
+						drawMajorGridlines: false
+					},
+					// Pad the y axis just a little so bars can get close to, but
+					// not touch, the grid boundaries.  1.2 is the default padding.
+					yaxis: {
+						pad: 1.05,
+						tickOptions: {formatString: '%.1f'}
+					}
+				},
+				grid:{
+					background: 'white',
+					shadow: false
+				}
+			});
 		}
-	});
-
-
-$(document).ready(function(){
-    var s1 = [200, 600, 700, 1000];
-    var s2 = [460, -210, 690, 820];
-    var s3 = [-260, -440, 320, 200];
-    // Can specify a custom tick Array.
-    // Ticks should match up one for each y value (category) in the series.
-    var ticks = ['May', 'June', 'July', 'August'];
-     
-    plot1 = $.jqplot('chart1', [s1, s2, s3], {
-        // The "seriesDefaults" option is an options object that will
-        // be applied to all series in the chart.
-        seriesDefaults:{
-            renderer:$.jqplot.BarRenderer,
-            rendererOptions: {fillToZero: true}
-        },
-        // Custom labels for the series are specified with the "label"
-        // option on the series option.  Here a series option object
-        // is specified for each series.
-        series:[
-            {label:'Hotel'},
-            {label:'Event Regristration'},
-            {label:'Airfare'}
-        ],
-        // Show the legend and put it outside the grid, but inside the
-        // plot container, shrinking the grid to accomodate the legend.
-        // A value of "outside" would not shrink the grid and allow
-        // the legend to overflow the container.
-        legend: {
-            show: true,
-            placement: 'outsideGrid'
-        },
-        axes: {
-            // Use a category axis on the x axis and use our custom ticks.
-            xaxis: {
-                renderer: $.jqplot.CategoryAxisRenderer,
-                ticks: ticks
-            },
-            // Pad the y axis just a little so bars can get close to, but
-            // not touch, the grid boundaries.  1.2 is the default padding.
-            yaxis: {
-                pad: 1.05,
-                tickOptions: {formatString: '$%d'}
-            }
-        },
-		grid:{
-			background: 'white'
-		}
-    });
-
-  var s1 = [2, 6, 7, 10];
-  var s2 = [7, 5, 3, 4];
-  var s3 = [14, 9, 3, 8];
-  
-  plot3 = $.jqplot('chart3', [s1, s2, s3], {
-    // Tell the plot to stack the bars.
-    stackSeries: true,
-    captureRightClick: true,
-    seriesDefaults:{
-      renderer:$.jqplot.BarRenderer,
-      rendererOptions: {
-          // Put a 30 pixel margin between bars.
-          barMargin: 30,
-          // Highlight bars when mouse button pressed.
-          // Disables default highlighting on mouse over.
-          highlightMouseDown: true   
-      },
-      pointLabels: {show: true}
-    },
-    axes: {
-      xaxis: {
-          renderer: $.jqplot.CategoryAxisRenderer
-      },
-      yaxis: {
-        // Don't pad out the bottom of the data range.  By default,
-        // axes scaled as if data extended 10% above and below the
-        // actual range to prevent data points right on grid boundaries.
-        // Don't want to do that here.
-        padMin: 0,
-		tickOptions: {formatString: '$%d'}
-      }
-    },
-    legend: {
-      show: true,
-      location: 'e',
-      placement: 'outside'
-    },
-	grid:{
-		background: 'white'
-	}
-  });
-  // Bind a listener to the "jqplotDataClick" event.  Here, simply change
-  // the text of the info3 element to show what series and ponit were
-  // clicked along with the data for that point.
-  $('#chart3').bind('jqplotDataClick', 
-    function (ev, seriesIndex, pointIndex, data) {
-      $('#info3').html('series: '+seriesIndex+', point: '+pointIndex+', data: '+data);
-    }
-  ); 
-});
 		</script>
 	</body>
 	
