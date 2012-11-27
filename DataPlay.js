@@ -93,7 +93,7 @@ var dp = {
 	isIn:		function( objAr, attr, haystack ){
 					if( ! (haystack instanceof Array) ){ haystack=[ haystack ] }
 					var filtered = objAr.filter( function(x){
-						var output = $.inArray( x[attr] , haystack ) !== -1;
+						var output = jQuery.inArray( x[attr] , haystack ) !== -1;
 						return( output );
 					} )
 					return( filtered );
@@ -101,7 +101,7 @@ var dp = {
 	isNotIn:		function( objAr, attr, haystack ){
 					if( ! (haystack instanceof Array) ){ haystack=[ haystack ] }
 					var filtered = objAr.filter( function(x){
-						var output = $.inArray( x[attr] , hastack ) == -1;
+						var output = jQuery.inArray( x[attr] , hastack ) == -1;
 						return( output );
 					} )
 					return( filtered );
@@ -239,7 +239,7 @@ dpVector.prototype.distribution = function( ){
 //	see http://code.google.com/p/jquery-csv/
 	/*	
 	*	jQuery.ajax( CSVpath, {success:function(data){
-	*			res = $.csv.toObjects(data);
+	*			res = jQuery.csv.toObjects(data);
 	*			rs = dpList( res );
 	*		}
 	*	});
