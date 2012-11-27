@@ -56,10 +56,15 @@ var dp = {
 				},
 	
 	unique:		function( ar ){
-					return( ar.sort().filter(
-						function(el,i,a){
-							if(i==a.indexOf(el)) return 1; return 0;
-						}));
+					var arObj = {};
+					var unique = [];
+					for( var i=0; i < ar.length; i++){
+						arObj[ar[i]] = ar[i];
+					}
+					for( var attr in arObj ){
+						unique.push( arObj[attr] );
+					}
+					return( unique );
 				},
 
 	intersect:	function( ar1, ar2 ){
@@ -227,8 +232,6 @@ dpVector.prototype.round = function( decimals ){
 dpVector.prototype.distribution = function( ){
 	return( dp.distribution( this.data ) )
 }
-
-
 
 
 //
